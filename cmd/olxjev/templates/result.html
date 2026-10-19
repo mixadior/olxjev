@@ -1,0 +1,46 @@
+{{define "result"}}<article class="card{{if .URL}} found{{end}}" data-query="{{.Query}}" data-backend="{{.Backend}}"{{if .URL}} data-url="{{.URL}}"{{end}}>
+    {{if .URL}}
+    <div class="url-row">
+        <a class="url" href="{{.URL}}" target="_blank" rel="noopener" title="{{.URL}}">{{.URL}}</a>
+        <div class="actions">
+            <button type="button" class="btn ghost" data-copy="{{.URL}}">Копіювати</button>
+            <a class="btn primary" href="{{.URL}}" target="_blank" rel="noopener">Відкрити на OLX ↗</a>
+        </div>
+    </div>
+    {{range .Alternatives}}
+    <div class="url-row alt">
+        <span class="alt-label">або {{.Label}}</span>
+        <a class="url" href="{{.URL}}" target="_blank" rel="noopener" title="{{.URL}}">{{.URL}}</a>
+        <div class="actions">
+            <button type="button" class="btn ghost" data-copy="{{.URL}}">Копіювати</button>
+            <a class="btn" href="{{.URL}}" target="_blank" rel="noopener">Відкрити ↗</a>
+        </div>
+    </div>
+    {{end}}
+    {{end}}
+
+    {{if .Hint}}<p class="hint">{{.Hint}}</p>{{end}}
+    {{if .Suggestions}}
+    <nav class="suggestions" aria-label="Уточнити місце">
+        {{range .Suggestions}}<a class="suggest" data-q="{{.Query}}" href="/?q={{.Query}}{{with $.Backend}}&amp;backend={{.}}{{end}}">{{.Label}}</a>{{end}}
+    </nav>
+    {{end}}
+    {{if .Error}}<p class="error">{{.Error}}</p>{{end}}
+
+    {{if .Chips}}
+    <ul class="chips">
+        {{range .Chips}}<li class="chip{{if lt .Probability 0.7}} unsure{{end}}" title="ймовірність {{pct .Probability}}%">
+            <span class="chip-title">{{.Title}}</span>
+            <span class="chip-value">{{.Label}}</span>
+            <span class="chip-conf" style="--c:{{pct .Probability}}"></span>
+        </li>{{end}}
+    </ul>
+    {{end}}
+
+    {{with .Debug}}{{template "debug" .}}{{end}}
+
+    <footer class="meta">
+        {{if .NotInURL}}<span>не враховано в посиланні: {{range $i, $t := .NotInURL}}{{if $i}}, {{end}}{{$t}}{{end}}</span>{{end}}
+        {{if .Elapsed}}<span class="elapsed">{{.Elapsed}}{{if .Cost}} · {{.Cost}}{{end}}</span>{{end}}
+    </footer>
+</article>{{end}}

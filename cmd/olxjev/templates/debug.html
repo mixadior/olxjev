@@ -1,0 +1,72 @@
+{{define "debug"}}<section class="debug" aria-label="Debug">
+    <div class="dbg-head">
+        <span class="dbg-badge">debug</span>
+        <button type="button" class="link" data-expand>розгорнути все</button>
+    </div>
+    {{if .Stage1}}
+    <details class="dbg-stage">
+        <summary><span class="dbg-cat-label">Етап 1 · категорія і місце</span></summary>
+        <ul class="dbg-filters">{{range .Stage1}}{{template "dbg-filter" .}}{{end}}</ul>
+    </details>
+    {{end}}
+    {{range .Categories}}
+    <details class="dbg-category{{if .Accepted}} accepted{{end}}"{{if .Accepted}} open{{end}}>
+        <summary>
+            <span class="dbg-cat-label">{{.Label}}</span>
+            <code>{{.Key}}</code>
+            <span class="dbg-tag">{{if .Accepted}}прийнято{{else}}низька ймовірність{{end}} · {{pct .Probability}}%</span>
+            <span class="dbg-count">фільтрів: {{len .Filters}}</span>
+        </summary>
+        {{if .Note}}<p class="dbg-note">{{.Note}}</p>{{end}}
+        <ul class="dbg-filters">{{range .Filters}}{{template "dbg-filter" .}}{{end}}</ul>
+    </details>
+    {{end}}
+</section>{{end}}
+
+{{define "dbg-filter"}}<li class="dbg-filter{{if .Set}} set{{end}}">
+    <details>
+        <summary>
+            <span class="dbg-title">{{.Title}}</span>
+            <code class="dbg-key">{{.Key}}</code>
+            <span class="dbg-kind">{{.Kind}}</span>
+            {{if .Outcome}}<span class="dbg-outcome">{{.Outcome}}</span>{{end}}
+            <span class="dbg-more">опис</span>
+        </summary>
+        <div class="dbg-body">
+            {{range .Questions}}
+            <div class="dbg-q">
+                <div class="dbg-q-head"><code>{{.Key}}</code> <span class="dbg-kind">{{.Type}}</span>{{if .Answer}} <span class="dbg-answer">{{.Answer}}</span>{{end}}</div>
+                <p class="dbg-instr">{{.Instructions}}</p>
+                {{if .Options}}
+                <table class="dbg-options">
+                    {{range .Options}}<tr{{if .Chosen}} class="chosen"{{end}}><td><code>{{.Name}}</code></td><td>{{.Desc}}</td><td class="num">{{.Probability}}</td></tr>{{end}}
+                </table>
+                {{end}}
+            </div>
+            {{else}}
+            <p class="dbg-note">Про це поле не питають: у запиті немає чисел.</p>
+            {{end}}
+            {{if .Request}}
+            <details class="dbg-json">
+                <summary>Запит моделі · JSON</summary>
+                <button type="button" class="btn ghost small" data-copy="{{.Request}}">Копіювати</button>
+                <pre>{{.Request}}</pre>
+            </details>
+            {{end}}
+            {{if .Request3}}
+            <details class="dbg-json">
+                <summary>Запит моделі · етап 3, якщо фільтр згадано · JSON</summary>
+                <button type="button" class="btn ghost small" data-copy="{{.Request3}}">Копіювати</button>
+                <pre>{{.Request3}}</pre>
+            </details>
+            {{end}}
+            {{if .Answer}}
+            <details class="dbg-json">
+                <summary>Відповідь моделі · JSON</summary>
+                <button type="button" class="btn ghost small" data-copy="{{.Answer}}">Копіювати</button>
+                <pre>{{.Answer}}</pre>
+            </details>
+            {{end}}
+        </div>
+    </details>
+</li>{{end}}

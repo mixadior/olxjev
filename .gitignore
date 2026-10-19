@@ -1,0 +1,7 @@
+/olxjev
+/olxjev_linux
+*.pprof
+*.test
+.idea/
+.zed/
+.DS_Store

@@ -1,0 +1,225 @@
+# Golden corpus for the live OlxJev eval (TestGolden, OLXJEV_LIVE=1).
+# Each case lists only the Values keys it asserts; "category" is the leaf
+# key (Catalog.LeafOf). Keys with ":" must be quoted. "a|b" accepts either
+# value (OLX data has near-duplicate locations).
+- q: "хочу зняти однушку квартиру в Харкові до 10к гривень в центрі"
+  expect: {category: category_1760, city: "280", currency: UAH, filter_enum_number_of_rooms_string: odnokomnatnye, "filter_float_price:to": "10000"}
+- q: "зніму 2-кімнатну квартиру у Львові до 15000 грн"
+  expect: {category: category_1760, city: "176", filter_enum_number_of_rooms_string: dvuhkomnatnye, "filter_float_price:to": "15000"}
+- q: "снять двушку в Киеве на Оболони до 20 тыс"
+  expect: {category: category_1760, city: "268", district: "9", filter_enum_number_of_rooms_string: dvuhkomnatnye, "filter_float_price:to": "20000"}
+- q: "куплю квартиру в Одесі до 50000$"
+  expect: {category: category_1758, city: "62", currency: USD, "filter_float_price:to": "50000"}
+- q: "купити трикімнатну квартиру в Дніпрі від 60 до 80 тис доларів"
+  expect: {category: category_1758, city: "121", currency: USD, filter_enum_number_of_rooms_string: trehkomnatnye, "filter_float_price:from": "60000", "filter_float_price:to": "80000"}
+- q: "купити квартиру в новобудові у Вінниці"
+  expect: {category: category_1758, city: "313", filter_enum_apartments_object_type: primary_market}
+- q: "оренда кімнати в Києві до 6000 грн"
+  expect: {category: category_1756, city: "268", "filter_float_price:to": "6000"}
+- q: "купити кімнату в гуртожитку в Полтаві"
+  expect: {category: category_1755, city: "284"}
+- q: "зняти будинок у Бучі"
+  expect: {category: category_330, city: "28"}
+- q: "купити будинок в Ірпені до 100 тис доларів"
+  expect: {category: category_1602, city: "295", currency: USD, "filter_float_price:to": "100000"}
+- q: "купить дом в Броварах с участком"
+  expect: {category: category_1602, city: "84"}
+- q: "продаж землі під забудову в Київській області"
+  expect: {category: category_1608, region: "25", filter_enum_property_type_land: "2"}
+- q: "оренда землі для фермерства в Полтавській області"
+  expect: {category: category_20, region: "15", filter_enum_property_type_land: "1"}
+- q: "оренда офісу в Харкові площею до 30 м2"
+  expect: {category: category_3690, city: "280", "filter_float_total_area:to": "30"}
+- q: "купити торгове приміщення у Львові"
+  expect: {category: category_3679, city: "176"}
+- q: "коворкінг у Києві"
+  expect: {category: category_3298, city: "268"}
+- q: "купити гараж в Запоріжжі"
+  expect: {category: category_21, city: "194"}
+- q: "оренда паркомісця в Одесі"
+  expect: {category: category_28, city: "62"}
+- q: "квартира подобово в Трускавці"
+  expect: {category: category_3711, city: "110"}
+- q: "зняти будинок подобово в Яремче"
+  # the 2023 data also had «Яремче» 157; OLX now lists only 2569
+  expect: {category: category_3710, city: "2569"}
+- q: "хостел у Львові"
+  expect: {category: category_3714, city: "176"}
+- q: "готель на морі в Одеській області"
+  expect: {category: category_3713, region: "9"}
+- q: "купити готель в Одесі"
+  # the other side of the stay/sale pair
+  expect: {category: category_3684, city: "62"}
+- q: "кімната подобово в Ужгороді"
+  expect: {category: category_3712, city: "247"}
+- q: "тур від туроператора на море"
+  # «тур» shortlists the village Тур: no place named, so no location error
+  expect: {category: category_3715, error: ""}
+- q: "купити нерухомість за кордоном у Польщі"
+  expect: {category: category_1522, error: ""}
+- q: "зняти квартиру в Харкові з котом"
+  expect: {category: category_1760, city: "280", filter_enum_pets: yes_cat}
+- q: "хочу зняти однушку квартиру в Харкові до 10к гривень в центрі, щоб можна було з питомцем"
+  # no species named: any pet = every «yes» option
+  expect: {category: category_1760, city: "280", "filter_float_price:to": "10000", filter_enum_pets: "yes_big_dog;yes_cat;yes_medium_dog;yes_other;yes_small_dog"}
+- q: "оренда квартири у Львові, можна з тваринами"
+  expect: {category: category_1760, city: "176", filter_enum_pets: "yes_big_dog;yes_cat;yes_medium_dog;yes_other;yes_small_dog"}
+- q: "квартира в оренду без комісії в Києві"
+  expect: {category: category_1760, city: "268", filter_bool_commission: "1"}
+- q: "1-2 кімнатна квартира в оренду у Львові"
+  expect: {category: category_1760, city: "176", filter_enum_number_of_rooms_string: "dvuhkomnatnye;odnokomnatnye"}
+- q: "снять квартиру в Днепре, Центральный район, до 12к"
+  expect: {category: category_1760, city: "121", district: "119", "filter_float_price:to": "12000"}
+- q: "купити квартиру на Сихові у Львові"
+  expect: {category: category_1758, city: "176", district: "133"}
+- q: "квартира в оренду у Вишгороді не вище 5 поверху"
+  expect: {category: category_1760, city: "81", "filter_float_floor:to": "5"}
+- q: "купити будинок з газовим опаленням в Білій Церкві"
+  expect: {category: category_1602, city: "60", filter_enum_heating: individual_gas}
+- q: "квартира від власника в Одесі в оренду"
+  expect: {category: category_1760, city: "62", owner_type: private}
+- q: "купити квартиру-студію в Києві"
+  expect: {category: category_1758, city: "268"}
+- q: "орендувати квартиру в Миколаєві до 9000"
+  expect: {category: category_1760, city: "106", "filter_float_price:to": "9000"}
+- q: "купити будинок в Камʼянському"
+  expect: {category: category_1602, region: "21"}
+- q: "купить дом в Ивановке Одесской области"
+  expect: {category: category_1602, region: "9"}
+- q: "снять квартиру в Запорожье на Хортице"
+  expect: {category: category_1760, city: "194", district: "49"}
+- q: "квартира в оренду в Харкові площею від 40 м2"
+  expect: {category: category_1760, city: "280", "filter_float_total_area:from": "40"}
+- q: "куплю дом в Полтаве до 2 млн грн"
+  expect: {category: category_1602, city: "284", currency: UAH, "filter_float_price:to": "2000000"}
+- q: "зняти квартиру у Кривому Розі до 10,000 грн"
+  expect: {category: category_1760, city: "340", currency: UAH, "filter_float_price:to": "10000"}
+- q: "купить квартиру в Кривом Роге"
+  expect: {category: category_1758, city: "340"}
+- q: "будинок в оренду в Новій Каховці"
+  expect: {category: category_330, city: "374"}
+- q: "купити будинок у Кам'янці-Подільському"
+  expect: {category: category_1602, city: "107"}
+- q: "купити квартиру в Києві у єсоеля"
+  # misspelled «єОселя»: the state mortgage programme filter
+  expect: {category: category_1758, city: "268", filter_bool_eoselia: "1"}
+- q: "купити будинок під єОселю в Ірпені"
+  expect: {category: category_1602, city: "295", filter_bool_eoselia: "1"}
+- q: "купити квартиру в Одесі за 60000$"
+  # a price without «від»/«до» is the maximum ("" = unset)
+  expect: {category: category_1758, city: "62", currency: USD, "filter_float_price:to": "60000", "filter_float_price:from": ""}
+- q: "купити будинок в Іванівці"
+  # dozens of Іванівка across Ukraine: ask for the region instead of guessing
+  expect: {category: category_1602, error: location}
+- q: "оренда офісу площею до 30 м2"
+  expect: {category: category_3690, error: ""}
+# Negative cases: filters the query does not ask for must stay unset ("").
+# They measure what a lower cutoff lets through (TestGolden's calibration).
+- q: "зняти квартиру в Харкові"
+  expect: {category: category_1760, city: "280", filter_bool_commission: "", filter_enum_pets: "", filter_enum_number_of_rooms_string: ""}
+- q: "купити квартиру в Києві"
+  expect: {category: category_1758, city: "268", filter_bool_eoselia: "", filter_enum_comfort: "", filter_enum_infrastructure_500_m: "", filter_enum_apartments_dev_type: ""}
+- q: "купити квартиру в Києві, шукаю оселю для родини"
+  # «оселя» is the ordinary word for a home, not the єОселя programme.
+  # (Plain «купити оселю» is flat-or-house: Jev split 0.44–0.49 between them.)
+  expect: {category: category_1758, city: "268", filter_bool_eoselia: ""}
+- q: "квартира у Львові з комісією в оренду"
+  expect: {category: category_1760, city: "176", filter_bool_commission: ""}
+- q: "оренда 2-кімнатної квартири в Харкові"
+  # 2 is the room count, not a price or an area
+  expect: {category: category_1760, city: "280", filter_enum_number_of_rooms_string: dvuhkomnatnye, "filter_float_price:to": "", "filter_float_total_area:to": ""}
+- q: "зняти квартиру в Дніпрі на 9 поверсі до 12000"
+  # 9 is the floor, not the building height
+  expect: {category: category_1760, city: "121", "filter_float_price:to": "12000", "filter_float_total_floors:from": "", "filter_float_total_floors:to": ""}
+- q: "купити будинок у Полтаві площею 120 м2 за 80 тисяч доларів"
+  expect: {category: category_1602, city: "284", currency: USD, "filter_float_price:to": "80000", "filter_float_price:from": ""}
+- q: "квартира подобово у Львові"
+  expect: {category: category_3711, city: "176", currency: ""}
+- q: "зняти квартиру у Львові 12000 грн"
+  expect: {category: category_1760, city: "176", "filter_float_price:to": "12000", "filter_float_price:from": ""}
+# multi-choice gate recall (2026-10-17): fields named indirectly or among many options
+- q: "зняти квартиру в Києві біля метро"
+  expect: {category: category_1760, city: "268", filter_enum_infrastructure_500_m: metro}
+- q: "купити квартиру в Києві, щоб поруч були школа і садочок"
+  expect: {category: category_1758, city: "268", filter_enum_infrastructure_500_m: "kindergarten;school"}
+- q: "купити квартиру в Києві з кондиціонером і балконом"
+  expect: {category: category_1758, city: "268", filter_enum_comfort: "air_conditioning;balcony_loggia"}
+- q: "купити будинок у Бучі з басейном"
+  expect: {category: category_1602, city: "28", filter_enum_comfort_4: swimming_pool}
+- q: "купити квартиру в елітному ЖК у Києві"
+  expect: {category: category_1758, city: "268", filter_enum_apartments_dev_type: elite}
+# multi-choice true positives (2026-10-17): one field, named directly or by meaning
+- q: "зняти квартиру в Харкові з маленьким песиком"
+  expect: {category: category_1760, city: "280", filter_enum_pets: yes_small_dog}
+- q: "оренда квартири в Одесі, у мене великий собака"
+  expect: {category: category_1760, city: "62", filter_enum_pets: yes_big_dog}
+- q: "оренда кімнати у Львові з кішкою"
+  expect: {category: category_1756, city: "176", filter_enum_pets: yes_cat}
+- q: "оренда квартири в Одесі з котом, але без собак"
+  expect: {category: category_1760, city: "62", filter_enum_pets: yes_cat}
+- q: "квартира в оренду в Харкові з резервним живленням на випадок блекауту"
+  expect: {category: category_1760, city: "280", filter_enum_blackout_autonomy: backup_power_supply}
+- q: "зняти квартиру в Києві, щоб при відключеннях світла працював інтернет"
+  expect: {category: category_1760, city: "268", filter_enum_blackout_autonomy: internet}
+- q: "купити квартиру у Львові на вторинному ринку"
+  expect: {category: category_1758, city: "176", filter_enum_apartments_object_type: secondary_market}
+- q: "купити квартиру в Одесі економ класу"
+  expect: {category: category_1758, city: "62", filter_enum_apartments_dev_type: economy}
+- q: "купити квартиру в Полтаві з централізованим опаленням"
+  expect: {category: category_1758, city: "284", filter_enum_heating: centralized}
+- q: "купити будинок в Ірпені з тепловим насосом"
+  expect: {category: category_1602, city: "295", filter_enum_heating: heat_pump}
+- q: "купити квартиру в Києві з посудомийною і пральною машиною"
+  expect: {category: category_1758, city: "268", filter_enum_appliances: "dishwasher;washer"}
+- q: "купити будинок у Полтаві з сауною і каміном"
+  expect: {category: category_1602, city: "284", filter_enum_comfort_4: "fireplace;sauna"}
+- q: "купити будинок в Броварах зі свердловиною"
+  expect: {category: category_1602, city: "84", filter_enum_communications: well}
+- q: "квартира подобово в Одесі на 4 людини"
+  expect: {category: category_3711, city: "62", filter_enum_sleep_places: "4"}
+- q: "будинок подобово в Яремче з харчуванням"
+  expect: {category: category_3710, city: "2569", filter_enum_is_food: "yes"}
+- q: "санаторій у Трускавці"
+  expect: {category: category_3713, city: "110", filter_enum_hotel_type: sanatorium}
+- q: "чотиризірковий готель у Львові"
+  expect: {category: category_3713, city: "176", filter_enum_hotel_category: star4}
+- q: "хостел у Львові, кімната на 4 місця"
+  # «Чотиримісний» is option 2
+  expect: {category: category_3714, city: "176", filter_enum_sleep_places_2: "2"}
+- q: "оренда офісу в Києві, open space"
+  expect: {category: category_3690, city: "268", filter_enum_office_type: open_space}
+- q: "оренда офісу в бізнес-центрі у Львові"
+  expect: {category: category_3690, city: "176", filter_enum_comm_re_type: business_center}
+- q: "оренда офісу з ремонтом в Одесі"
+  expect: {category: category_3690, city: "62", filter_enum_is_repaired: "yes"}
+- q: "оренда торгового приміщення з фасадним входом у Харкові"
+  expect: {category: category_3692, city: "280", filter_enum_comm_re_location: facade}
+- q: "продаж землі сільськогосподарського призначення в Полтавській області"
+  expect: {category: category_1608, region: "15", filter_enum_property_type_land: "1"}
+- q: "купити будинок в Ірпені, газ підведений"
+  # gas is a utility; the heating type is not said
+  expect: {category: category_1602, city: "295", filter_enum_communications: gas, filter_enum_heating: ""}
+# multi-choice true negatives: something nearby is said, the fields must stay unset
+- q: "купити квартиру в Одесі біля моря"
+  # no sea among the infrastructure options
+  expect: {category: category_1758, city: "62", filter_enum_infrastructure_500_m: ""}
+- q: "купити будинок у Полтаві"
+  expect: {category: category_1602, city: "284", filter_enum_heating: "", filter_enum_comfort_4: "", filter_enum_communications: "", filter_enum_appliances: ""}
+- q: "зняти квартиру в Дніпрі для студента"
+  expect: {category: category_1760, city: "121", filter_enum_pets: "", filter_enum_number_of_rooms_string: ""}
+- q: "купити квартиру в Харкові з ремонтом"
+  # no renovation filter for flats: comfort and appliances must not stand in for it
+  expect: {category: category_1758, city: "280", filter_enum_comfort: "", filter_enum_appliances: ""}
+- q: "оренда офісу в Києві"
+  expect: {category: category_3690, city: "268", filter_enum_office_type: "", filter_enum_office_class: "", filter_enum_comm_re_type: "", filter_enum_furnishing: "", filter_enum_is_repaired: ""}
+- q: "квартира подобово в Одесі"
+  expect: {category: category_3711, city: "62", filter_enum_sleep_places: "", filter_enum_layout: "", filter_enum_is_food: ""}
+- q: "купити квартиру в Києві для сім'ї з двома дітьми"
+  expect: {category: category_1758, city: "268", filter_enum_infrastructure_500_m: "", filter_enum_number_of_rooms_string: ""}
+- q: "хостел в Києві"
+  expect: {category: category_3714, city: "268", filter_enum_sleep_places_2: "", filter_enum_is_food: ""}
+- q: "готель у Трускавці"
+  expect: {category: category_3713, city: "110", filter_enum_hotel_type: "", filter_enum_hotel_category: ""}
+- q: "купити будинок з ділянкою в Броварах"
+  # a plot is not a garden
+  expect: {category: category_1602, city: "84", filter_enum_comfort_4: ""}
