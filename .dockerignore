@@ -1,0 +1,10 @@
+.git
+.idea
+.zed
+.DS_Store
+/olxjev
+/olxjev_linux
+*.pprof
+*.test
+Dockerfile
+.dockerignore
