@@ -1,0 +1,76 @@
+# https://taskfile.dev — `task --list` shows the tasks.
+# API keys (TYPESAFE_API_KEY, SUBQ_API_KEY, OPENCODE_API_KEY) are read from the environment.
+version: '3'
+
+vars:
+    BIN: ./bin/olxjev
+    IMAGE: olxjev
+    TAG: dev
+    ADDR: 127.0.0.1:8080
+    PORT: 8080
+    # Extra olxjev flags, e.g. FLAGS="-via opencode" or FLAGS="-backend subq".
+    FLAGS: ''
+
+tasks:
+    default:
+        cmds:
+            - task --list
+        silent: true
+
+    build:
+        desc: Build the local binary into ./bin
+        sources:
+            - '**/*.go'
+            - go.mod
+            - go.sum
+            - cmd/olxjev/templates/**
+            - cmd/olxjev/assets/**
+            - olxform/resources/**
+        generates:
+            - '{{.BIN}}'
+        cmds:
+            - go build -trimpath -o {{.BIN}} ./cmd/olxjev
+
+    test:
+        desc: Run the offline tests (no keys, no network)
+        cmds:
+            - go vet ./...
+            - go test ./...
+
+    run:
+        desc: 'Resolve one query with the local binary: task run Q="зняти однушку в Харкові до 10к"'
+        deps: [build]
+        requires:
+            vars: [Q]
+        cmds:
+            - '{{.BIN}} {{.FLAGS}} -q {{shellQuote .Q}} {{.CLI_ARGS}}'
+
+    serve:
+        desc: Run the web UI with the local binary on ADDR (default 127.0.0.1:8080)
+        deps: [build]
+        cmds:
+            - '{{.BIN}} {{.FLAGS}} -serve {{.ADDR}} {{.CLI_ARGS}}'
+
+    docker:build:
+        desc: Build the Docker image (IMAGE:TAG, default olxjev:dev)
+        cmds:
+            - docker build -t {{.IMAGE}}:{{.TAG}} .
+
+    docker:run:
+        desc: 'Resolve one query in the container: task docker:run Q="..."'
+        deps: ['docker:build']
+        requires:
+            vars: [Q]
+        cmds:
+            - docker run --rm -e TYPESAFE_API_KEY -e SUBQ_API_KEY -e OPENCODE_API_KEY {{.IMAGE}}:{{.TAG}} {{.FLAGS}} -q {{shellQuote .Q}} {{.CLI_ARGS}}
+
+    docker:serve:
+        desc: Run the web UI in the container on http://localhost:PORT (default 8080)
+        deps: ['docker:build']
+        cmds:
+            - docker run --rm -p {{.PORT}}:8080 -e TYPESAFE_API_KEY -e SUBQ_API_KEY -e OPENCODE_API_KEY {{.IMAGE}}:{{.TAG}} {{.FLAGS}} -serve 0.0.0.0:8080 {{.CLI_ARGS}}
+
+    clean:
+        desc: Remove the local binary
+        cmds:
+            - rm -rf ./bin

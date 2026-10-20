@@ -5,3 +5,5 @@
 .idea/
 .zed/
 .DS_Store
+/bin/
+.task/
