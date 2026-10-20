@@ -19,7 +19,7 @@ https://www.olx.ua/uk/nedvizhimost/kvartiry/dolgosrochnaya-arenda-kvartir/kharko
 **[olxjev.ggg.org.ua](https://olxjev.ggg.org.ua)**: type a request in Ukrainian and get the OLX
 search link.
 
-![olxjev web UI: a free-text request turns into an OLX search link](http://feodosian.com/public/olxjev.gif)
+![olxjev web UI: a free-text request turns into an OLX search link](https://chiprocky.eu-central-1.linodeobjects.com/chiprocky/Recording%202026-10-20%20at%2022-21-10.gif)
 
 > [!NOTE]
 > The demo runs Jev through [OpenCode Zen's free tier](https://opencode.ai/docs/zen) (`-via opencode`,
