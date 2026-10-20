@@ -19,6 +19,8 @@ https://www.olx.ua/uk/nedvizhimost/kvartiry/dolgosrochnaya-arenda-kvartir/kharko
 **[olxjev.ggg.org.ua](https://olxjev.ggg.org.ua)**: type a request in Ukrainian and get the OLX
 search link.
 
+![olxjev web UI: a free-text request turns into an OLX search link](http://feodosian.com/public/olxjev.gif)
+
 > [!NOTE]
 > The demo runs Jev through [OpenCode Zen's free tier](https://opencode.ai/docs/zen) (`-via opencode`,
 > `jev-1.13-free`). The free tier is rate-limited, and the limits aren't published. When many people use the
