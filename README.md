@@ -93,7 +93,8 @@ olxjev -debug -q "..."
 | `-threshold` | One acceptance cutoff for every question type, instead of the calibrated per-type ones. |
 | `-json` | JSON lines output: values, labels, probabilities, URLs, cost. |
 | `-no-url` | Don't call OLX. Print the resolved values only. |
-| `-debug` | Dump the state, questions and raw answers to stderr. |
+| `-debug` | Log the state, questions and raw answers (debug level). |
+| `-log-format` | Logs on stderr: `auto` (console on a terminal, JSON lines otherwise), `console` or `json`. |
 | `-serve` | Run the web UI on this address, e.g. `127.0.0.1:8080`. |
 | `-cache-size` | With `-serve`: LRU cache size in answered queries (default 100000, about 230 MB; 0 turns it off). |
 | `-web-debug` | With `-serve`: show every question and raw model exchange under each result. **Exposes the prompts. Don't use it on a public server.** |
@@ -103,6 +104,7 @@ olxjev -debug -q "..."
 | `TYPESAFE_API_KEY` | `typesafe` (TypeSafe's API) |
 | `SUBQ_API_KEY` | `subq` |
 | `OPENCODE_API_KEY` | `-via opencode` (optional: the free model answers without one) |
+| `OLXJEV_SECRET` | With `-serve`: the key page tokens are signed with (at least 16 characters, see below). Random per process when unset. |
 
 ### Web UI and API
 
@@ -111,12 +113,21 @@ TYPESAFE_API_KEY=... olxjev -serve 127.0.0.1:8080
 ```
 
 - `GET /?q=...` renders the result on the server: the link is shareable and works without JavaScript.
-- `POST /api/resolve` with `{"q": "...", "backend": "subq"}` returns the same shape as `-json`. The
-  `backend` field is optional. The endpoint answers 200 for a result or a "please clarify" outcome, 400
-  for a bad request (an unknown backend, or a query over 500 characters), and 502 when the model or OLX
-  failed.
+- `GET /result?q=...` (the card the page's script swaps in) and `POST /api/resolve` with
+  `{"q": "...", "backend": "subq"}` (the same shape as `-json`; `backend` is optional) serve the web page
+  only, see below. `/api/resolve` answers 200 for a result or a "please clarify" outcome, 400 for a bad
+  request (an unknown backend, or a query over 500 characters), and 502 when the model or OLX failed.
 - When more than one backend has a key set, the page shows a switch between them. An unknown backend, or
   one without a key, is an error; olxjev never quietly falls back to another model.
+
+**Page-only endpoints.** Every model call costs credits, so `/result` and `/api/resolve` answer only the
+page's own script. The page carries a signed token that expires after 12 hours, and the script sends it
+back in the `X-OlxJev-Token` header. A request without a valid token, or a browser request from another
+site, gets a 403. When a token expires, the script reloads the result as a page, which brings a new one.
+Set `OLXJEV_SECRET` to the same value on every replica behind one address. If it's unset, each process
+picks a random key, and tokens stop working when it restarts. This keeps other sites and casual scripts
+off your credits, but it isn't authentication: a script that loads the page first can read the token. On a
+public server, also put a rate limit in front. For scripted use, run the CLI with `-json`.
 
 When the query is ambiguous, the page asks for more instead of building a wrong URL. A place it can't
 resolve gets a "which region?" prompt with candidate cities. When the category is unclear («купити
@@ -140,7 +151,25 @@ docker run --rm -p 8080:8080 olxjev -via opencode -serve 0.0.0.0:8080
 docker run --rm -e TYPESAFE_API_KEY olxjev -q "зняти двушку у Львові до 15000 грн"
 ```
 
-The cache lives in memory and has no TTL. Restart the container after you refresh the OLX data.
+Without a terminal, the container logs JSON lines. Pass `-e OLXJEV_SECRET` when you run several
+replicas. The cache lives in memory and has no TTL. Restart the container after you refresh the OLX data.
+
+### Taskfile
+
+With [Task](https://taskfile.dev) installed, `task --list` shows the shortcuts. API keys come from the
+environment, and `FLAGS` passes extra olxjev flags.
+
+```bash
+task build                                    # ./bin/olxjev
+task test                                     # go vet + offline tests
+task run Q="зняти однушку в Харкові до 10к"   # one query with the local binary
+task run Q="..." FLAGS="-via opencode"        # free Jev, no key
+task serve ADDR=127.0.0.1:8080                # web UI with the local binary
+
+task docker:build                             # olxjev:dev (IMAGE=…, TAG=…)
+task docker:run Q="..."                       # one query in the container
+task docker:serve PORT=8080                   # web UI on http://localhost:8080
+```
 
 ### As a library
 
@@ -225,7 +254,7 @@ corpus.
 | `cmd/olxjev/` | CLI and web UI (embedded templates and assets) |
 | `olxform/` | OLX wizard composer; generated form data in `olxform/resources/` |
 | `olxurl/` | Wizard values → OLX search URL |
-| `request/` | HTTP client with retries |
+| `request/` | HTTP client (`net/http`) with retries |
 | `testdata/golden.yaml` | Golden corpus for the live eval |
 
 ### OLX form data

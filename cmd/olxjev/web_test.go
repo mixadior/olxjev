@@ -4,13 +4,15 @@ import (
     "bytes"
     "context"
     "encoding/json"
-    "io"
+    "math"
     "net/http"
     "net/http/httptest"
     "net/url"
     "strings"
     "sync"
     "testing"
+
+    "github.com/rs/zerolog"
 
     "github.com/mixadior/olxjev"
     "github.com/mixadior/olxjev/decision/typesafe"
@@ -20,8 +22,8 @@ import (
 // fakeBreadcrumbs stands in for OLX's breadcrumbs API behind olxurl.Build.
 type fakeBreadcrumbs struct{}
 
-func (fakeBreadcrumbs) Q(_ context.Context, _ string, _ ...string) (interface{}, string, []error) {
-    return nil, `{"data":{"breadcrumbs":[{"href":"/uk/nedvizhimost/kvartiry/dolgosrochnaya-arenda-kvartir/kharkov/"}]}}`, nil
+func (fakeBreadcrumbs) Get(_ context.Context, _ string) ([]byte, error) {
+    return []byte(`{"data":{"breadcrumbs":[{"href":"/uk/nedvizhimost/kvartiry/dolgosrochnaya-arenda-kvartir/kharkov/"}]}}`), nil
 }
 
 func newTestWeb(t *testing.T, category string, rq request.Request) http.Handler {
@@ -32,7 +34,7 @@ func newTestWeb(t *testing.T, category string, rq request.Request) http.Handler 
     if err != nil {
         t.Fatalf("newResolver: %v", err)
     }
-    h, err := newWeb([]*olxjev.Resolver{resolver}, rq, io.Discard, webOptions{})
+    h, err := newWeb([]*olxjev.Resolver{resolver}, rq, zerolog.Nop(), webOptions{})
     if err != nil {
         t.Fatalf("newWeb: %v", err)
     }
@@ -172,7 +174,7 @@ func TestWebLogsCostPerResolve(t *testing.T) {
         t.Fatalf("newResolver: %v", err)
     }
     var logs bytes.Buffer
-    h, err := newWeb([]*olxjev.Resolver{resolver}, fakeBreadcrumbs{}, &logs, webOptions{})
+    h, err := newWeb([]*olxjev.Resolver{resolver}, fakeBreadcrumbs{}, zerolog.New(&logs), webOptions{})
     if err != nil {
         t.Fatalf("newWeb: %v", err)
     }
@@ -182,15 +184,37 @@ func TestWebLogsCostPerResolve(t *testing.T) {
     }
     w = httptest.NewRecorder()
     h.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/api/resolve", strings.NewReader(`{"q":"зняти квартиру у Львові"}`)))
-    log := logs.String()
-    for _, want := range []string{
-        "resolve [typesafe] «зняти квартиру в Харкові»: ≈$0.000126 (fake, 2 calls, 3000 input tokens)",
-        "resolve [typesafe] «зняти квартиру у Львові»: ",
-    } {
-        if !strings.Contains(log, want) {
-            t.Errorf("log lacks %q:\n%s", want, log)
+    events := resolveEvents(t, &logs)
+    if len(events) != 2 {
+        t.Fatalf("want 2 resolve events, got %d:\n%s", len(events), logs.String())
+    }
+    first := events[0]
+    if first["backend"] != "typesafe" || first["query"] != "зняти квартиру в Харкові" || first["model"] != "fake" ||
+        first["calls"] != 2.0 || first["input_tokens"] != 3000.0 || math.Abs(first["cost_usd"].(float64)-0.000126) > 1e-9 {
+        t.Errorf("first resolve event = %v", first)
+    }
+    if events[1]["query"] != "зняти квартиру у Львові" {
+        t.Errorf("second resolve event = %v", events[1])
+    }
+}
+
+// resolveEvents decodes the "resolve" events of a JSON log.
+func resolveEvents(t *testing.T, logs *bytes.Buffer) []map[string]any {
+    t.Helper()
+    var out []map[string]any
+    for _, line := range strings.Split(strings.TrimSpace(logs.String()), "\n") {
+        if line == "" {
+            continue
+        }
+        var ev map[string]any
+        if err := json.Unmarshal([]byte(line), &ev); err != nil {
+            t.Fatalf("log line is not JSON: %v\n%s", err, line)
+        }
+        if ev["message"] == "resolve" {
+            out = append(out, ev)
         }
     }
+    return out
 }
 
 func TestWebEscapesQuery(t *testing.T) {

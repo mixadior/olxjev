@@ -10,6 +10,8 @@ import (
     "sync/atomic"
     "testing"
 
+    "github.com/rs/zerolog"
+
     "github.com/mixadior/olxjev"
     "github.com/mixadior/olxjev/decision/subq"
     "github.com/mixadior/olxjev/decision/typesafe"
@@ -37,7 +39,7 @@ func newBackendsWeb(t *testing.T, opts webOptions, names ...string) (http.Handle
         resolvers = append(resolvers, resolver)
     }
     logs := &bytes.Buffer{}
-    h, err := newWeb(resolvers, fakeBreadcrumbs{}, logs, opts)
+    h, err := newWeb(resolvers, fakeBreadcrumbs{}, zerolog.New(logs), opts)
     if err != nil {
         t.Fatalf("newWeb: %v", err)
     }
@@ -154,12 +156,13 @@ func TestWebBackendSwitch(t *testing.T) {
     }
 }
 
-// The log line names the backend that answered.
+// The resolve event names the backend that answered.
 func TestWebLogNamesBackend(t *testing.T) {
     h, _, logs := newBackendsWeb(t, webOptions{}, typesafe.Name, subq.Name)
     get(t, h, "/result?backend=subq&q="+url.QueryEscape(kharkiv))
-    if want := "resolve [subq] «" + kharkiv + "»: "; !strings.Contains(logs.String(), want) {
-        t.Errorf("log lacks %q:\n%s", want, logs.String())
+    events := resolveEvents(t, logs)
+    if len(events) != 1 || events[0]["backend"] != subq.Name || events[0]["query"] != kharkiv {
+        t.Errorf("resolve events = %v, want one by subq for %q", events, kharkiv)
     }
 }
 
@@ -183,9 +186,9 @@ func TestRunServeListsBackends(t *testing.T) {
         env  map[string]string
         want string
     }{
-        {[]string{"-endpoint", srv.URL}, nil, "(backends: typesafe (default))"},
-        {[]string{"-endpoint", srv.URL}, map[string]string{"SUBQ_API_KEY": "k"}, "(backends: typesafe (default), subq)"},
-        {[]string{"-backend", "subq", "-endpoint", srv.URL}, map[string]string{"TYPESAFE_API_KEY": "k"}, "(backends: typesafe, subq (default))"},
+        {[]string{"-endpoint", srv.URL}, nil, `"backends":"typesafe (default)"`},
+        {[]string{"-endpoint", srv.URL}, map[string]string{"SUBQ_API_KEY": "k"}, `"backends":"typesafe (default), subq"`},
+        {[]string{"-backend", "subq", "-endpoint", srv.URL}, map[string]string{"TYPESAFE_API_KEY": "k"}, `"backends":"typesafe, subq (default)"`},
     } {
         var stderr bytes.Buffer
         run(append(tc.args, "-serve", "127.0.0.1:-1"), nil, io.Discard, &stderr, func(k string) string { return tc.env[k] })

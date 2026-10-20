@@ -8,7 +8,6 @@ import (
     "fmt"
     "html/template"
     "io"
-    "log"
     "net/http"
     "strings"
     "time"
@@ -16,6 +15,7 @@ import (
     "unicode/utf8"
 
     botform "github.com/mixadior/bfc"
+    "github.com/rs/zerolog"
 
     "github.com/mixadior/olxjev"
     "github.com/mixadior/olxjev/decision"
@@ -50,8 +50,10 @@ var examples = []string{
 // GET /result (the result card alone, for the page's script),
 // POST /api/resolve (the -json output) and the embedded assets. Each takes
 // a backend (?backend=, the API's "backend"); without one the default answers.
+// /result and /api/resolve answer only the page's script (token.go).
 type web struct {
-    log       *log.Logger                 // one line per resolve: backend, query, decision usage, estimated cost
+    log       zerolog.Logger              // one event per resolve: backend, query, decision usage, estimated cost
+    tokens    *pageTokens                 // nil: /result and /api/resolve are open
     resolvers map[string]*olxjev.Resolver // by Decider.Name()
     names     []string                    // the backends in the switch's order
     backend   string                      // the default
@@ -67,11 +69,12 @@ type webOptions struct {
     debug     bool   // show the debug panel: every filter, the model's questions and answers
     backend   string // the default backend; "" = the first resolver's
     via       string // -via: where the typesafe backend is served, for the startup line
+    secret    []byte // signs the page tokens; empty leaves /result and /api/resolve open (handler tests)
 }
 
 // newWeb builds the handler over one resolver per backend, in the order the
 // page's switch lists them.
-func newWeb(resolvers []*olxjev.Resolver, rq request.Request, logw io.Writer, opts webOptions) (http.Handler, error) {
+func newWeb(resolvers []*olxjev.Resolver, rq request.Request, log zerolog.Logger, opts webOptions) (http.Handler, error) {
     if len(resolvers) == 0 {
         return nil, errors.New("no decision backend")
     }
@@ -82,7 +85,10 @@ func newWeb(resolvers []*olxjev.Resolver, rq request.Request, logw io.Writer, op
         return nil, err
     }
     s := &web{resolvers: map[string]*olxjev.Resolver{}, backend: opts.backend, rq: rq, tpl: tpl,
-        log: log.New(logw, "", log.LstdFlags), cache: newLRU[string, output](opts.cacheSize), debug: opts.debug}
+        log: log, cache: newLRU[string, output](opts.cacheSize), debug: opts.debug}
+    if len(opts.secret) > 0 {
+        s.tokens = &pageTokens{secret: opts.secret, now: time.Now}
+    }
     for _, r := range resolvers {
         name := r.Decider.Name()
         s.resolvers[name] = r
@@ -96,17 +102,17 @@ func newWeb(resolvers []*olxjev.Resolver, rq request.Request, logw io.Writer, op
     }
     mux := http.NewServeMux()
     mux.HandleFunc("GET /{$}", s.index)
-    mux.HandleFunc("GET /result", s.result)
-    mux.HandleFunc("POST /api/resolve", s.resolveJSON)
+    mux.HandleFunc("GET /result", s.pageOnly(s.result))
+    mux.HandleFunc("POST /api/resolve", s.pageOnly(s.resolveJSON))
     mux.Handle("GET /assets/", http.FileServerFS(assetsFs))
     return mux, nil
 }
 
 // serveWeb runs the web UI until the listener fails.
-func serveWeb(addr string, resolvers []*olxjev.Resolver, rq request.Request, opts webOptions, stdout, stderr io.Writer) int {
-    h, err := newWeb(resolvers, rq, stdout, opts)
+func serveWeb(addr string, resolvers []*olxjev.Resolver, rq request.Request, opts webOptions, log zerolog.Logger) int {
+    h, err := newWeb(resolvers, rq, log, opts)
     if err != nil {
-        fmt.Fprintln(stderr, "olxjev:", err)
+        log.Error().Err(err).Msg("building the web UI")
         return 1
     }
     srv := &http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: 10 * time.Second}
@@ -122,14 +128,15 @@ func serveWeb(addr string, resolvers []*olxjev.Resolver, rq request.Request, opt
         }
         names = append(names, label)
     }
-    fmt.Fprintf(stderr, "olxjev: web UI on http://%s/ (backends: %s)\n", addr, strings.Join(names, ", "))
+    log.Info().Str("url", "http://"+addr+"/").Str("backends", strings.Join(names, ", ")).Msg("web UI listening")
     if err := srv.ListenAndServe(); err != nil {
-        fmt.Fprintln(stderr, "olxjev:", err)
+        log.Error().Err(err).Msg("web UI stopped")
     }
     return 1
 }
 
 type pageView struct {
+    Token    string // the page token for the script's /result calls; "" without tokens
     Debug    bool
     Backend  string          // the decision backend answering, for the debug badge
     Backends []backendChoice // the switch; empty with a single backend
@@ -205,6 +212,9 @@ func (s *web) choices(name string) []backendChoice {
 func (s *web) index(w http.ResponseWriter, r *http.Request) {
     q := r.URL.Query().Get("q")
     view := pageView{Debug: s.debug, Query: q, Examples: examples}
+    if s.tokens != nil {
+        view.Token = s.tokens.issue()
+    }
     status := http.StatusOK
     resolver, err := s.resolverFor(r.URL.Query().Get("backend"))
     if err == nil {
@@ -366,23 +376,26 @@ func (s *web) resolve(ctx context.Context, resolver *olxjev.Resolver, q string) 
     return view
 }
 
-// logResolve writes one line per resolve: the backend, the query, decision
-// usage with the estimated cost, the time taken and any error.
+// logResolve logs one event per resolve: the backend, the query, decision
+// usage with the estimated cost, the time taken and any error. A failure
+// (the model or OLX, not a «clarify» outcome) is a warning.
 func (s *web) logResolve(backend, q string, out output, took time.Duration, cached bool) {
-    line := fmt.Sprintf("resolve [%s] «%s»: ", backend, q)
+    ev := s.log.Info()
+    if !out.answered() {
+        ev = s.log.Warn()
+    }
+    ev = ev.Str("backend", backend).Str("query", q).Bool("cached", cached)
     switch {
     case cached:
-        line += fmt.Sprintf("cache hit (%d cached)", s.cache.Len())
+        ev = ev.Int("cache_entries", s.cache.Len())
     case out.Result != nil:
-        line += costLine(out.Result.Usage)
-    default:
-        line += "no model answer"
+        u := out.Result.Usage
+        ev = ev.Str("model", u.Model).Int("calls", u.Calls).Int("input_tokens", u.InputTokens).Float64("cost_usd", u.CostUSD)
     }
-    line += fmt.Sprintf(" in %.1fs", took.Seconds())
     if out.Error != "" {
-        line += "; error: " + out.Error
+        ev = ev.Str("error", out.Error)
     }
-    s.log.Print(line)
+    ev.Int64("took_ms", took.Milliseconds()).Msg("resolve")
 }
 
 func (s *web) render(w http.ResponseWriter, status int, name string, data any) {

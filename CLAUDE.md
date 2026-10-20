@@ -26,7 +26,7 @@ the history before that lives there. olxsearch still has its own copy.
 | `cmd/olxjev/` | CLI + web UI (embedded templates/assets) |
 | `olxform/` | bfc composer for the OLX real-estate wizard, YAMLs embedded in `olxform/resources/` |
 | `olxurl/` | `Build`: bfc values → OLX search URL (via OLX's breadcrumbs API) |
-| `request/` | `Request` interface (`Q`) and `Local` (gorequest, 3 retries) |
+| `request/` | `Request` interface (`Get`) and `Local` (`net/http`; 3 retries on transport errors, 429, 5xx; TLS verified) |
 | `testdata/golden.yaml` | Golden corpus for the live eval |
 
 ### Code formatting
@@ -122,7 +122,7 @@ Spec: `docs/superpowers/specs/2026-10-14-olxjev-design.md`; backends: `docs/supe
 - Web cache: an in-memory LRU (`cmd/olxjev/cache.go`, `-cache-size`, default 100000, 0 = off) keyed by backend and
   `normalizeQuery` (case, whitespace, apostrophes, punctuation at the ends) serves the page, `/result` and
   `/api/resolve`. It keeps answers — resolved queries and the «clarify» outcomes — never Jev/OLX failures.
-  Hits log «cache hit» and show «з кешу». ~2.3 KB per entry: 100000 ≈ 230 MB. No TTL: restart after a data refresh.
+  Hits log `"cached":true` and show «з кешу». ~2.3 KB per entry: 100000 ≈ 230 MB. No TTL: restart after a data refresh.
   With `-web-debug` an entry also keeps the resolve's questions and raw answers (~30 KB), so the default drops to
   2000 (`debugCacheSize`; an explicit `-cache-size` wins).
 - Web limits: a query over 500 characters (`maxQueryRunes`; golden's longest is 88) is a 400 on every endpoint,
@@ -132,14 +132,25 @@ Spec: `docs/superpowers/specs/2026-10-14-olxjev-design.md`; backends: `docs/supe
   prices each call by the model the response names: input tokens × its price (typesafe `Price`: $0.042/Mtok —
   docs.typesafe.ai/models, 2026-10-15 — and $0 for OpenCode's `-free` models; subq $0.05/Mtok; output free;
   update the constants if pricing changes).
-  The CLI prints `cost: ≈$… (model, N calls, M input tokens)` per query, the web server logs one line per resolve
-  to stdout and shows cost and model in the card. `FieldInfo.Source` is `"model"` for answered fields.
+  The CLI prints `cost: ≈$… (model, N calls, M input tokens)` per query, the web server logs one `resolve` event per
+  resolve (zerolog, see Logs) and shows cost and model in the card. `FieldInfo.Source` is `"model"` for answered fields.
   Golden average (2026-10-17, short category labels + gate): 2.5 calls, ~9.4k input tokens, ≈$0.0004 per query
   (was ~15.3k, ≈$0.00064); the live golden log reports tokens per stage, calls and time per query.
 - Web UI: `TYPESAFE_API_KEY=... go run ./cmd/olxjev -serve 127.0.0.1:8080` — stdlib `net/http`, `html/template`;
   templates and assets are embedded (`cmd/olxjev/templates/`, `cmd/olxjev/assets/`).
   `GET /?q=` renders the result server-side (shareable link, works without JS), `GET /result?q=` is the card
   fragment the page script swaps in, `POST /api/resolve {"q": "..."}` returns the `-json` output.
+- Page-only endpoints (`cmd/olxjev/token.go`): `/result` and `/api/resolve` answer only the page's script. `GET /`
+  embeds a token (`<meta name="olxjev-token">`: expiry + HMAC-SHA256, 12 h) that the script sends in `X-OlxJev-Token`;
+  a missing, forged or expired token, or `Sec-Fetch-Site` other than `same-origin`, is a 403 (JSON for the API), and
+  the script answers a 403 by loading `/?q=` as a page (a fresh token). The key is `OLXJEV_SECRET` (≥16 chars; the same
+  on every replica), random per process when unset. `GET /?q=` stays open (shareable links, no JS). Not
+  authentication: a client that loads the page can read the token — a public server still wants a rate limit.
+  `webOptions.secret` empty leaves the endpoints open, which is what the handler tests use.
+- Logs: zerolog on stderr (`cmd/olxjev/logging.go`), `-log-format auto|console|json` (auto: console on a terminal,
+  JSON lines otherwise, so a container logs JSON); `-debug` logs each stage's questions and raw answers at debug
+  level. `Resolver.Log` gets the same logger. stdout carries only results (text or `-json`); usage errors (unknown
+  flag value, missing key) stay plain `olxjev: …` lines with exit 2.
 - Web backend switch: `-serve` builds a resolver for `-backend` (the default) and for every other backend whose key
   is set (`TYPESAFE_API_KEY`, `SUBQ_API_KEY`); `-endpoint`/`-model` are the default's, `-threshold`/`-debug` apply to
   all. With two or more the page shows «Модель: typesafe | subq» (radios of the GET form, so it works without JS);

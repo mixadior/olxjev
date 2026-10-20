@@ -9,6 +9,8 @@ import (
     "sync/atomic"
     "testing"
 
+    "github.com/rs/zerolog"
+
     "github.com/mixadior/olxjev"
     "github.com/mixadior/olxjev/decision/typesafe"
 )
@@ -27,7 +29,7 @@ func newCountingWeb(t *testing.T, jev http.HandlerFunc, cacheSize int) (http.Han
         t.Fatalf("newResolver: %v", err)
     }
     logs := &bytes.Buffer{}
-    h, err := newWeb([]*olxjev.Resolver{resolver}, fakeBreadcrumbs{}, logs, webOptions{cacheSize: cacheSize})
+    h, err := newWeb([]*olxjev.Resolver{resolver}, fakeBreadcrumbs{}, zerolog.New(logs), webOptions{cacheSize: cacheSize})
     if err != nil {
         t.Fatalf("newWeb: %v", err)
     }
@@ -55,7 +57,7 @@ func TestWebCachesSimilarQueries(t *testing.T) {
     if !strings.Contains(w.Body.String(), "з кешу") {
         t.Error("a cached card must say it came from the cache, not show a cost")
     }
-    if n := strings.Count(logs.String(), "cache hit"); n != 3 {
+    if n := strings.Count(logs.String(), `"cached":true`); n != 3 {
         t.Errorf("log has %d cache hits, want 3:\n%s", n, logs.String())
     }
 }

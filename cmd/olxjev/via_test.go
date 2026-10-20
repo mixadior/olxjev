@@ -85,7 +85,7 @@ func TestRunViaOpenCode(t *testing.T) {
 func TestRunViaOpenCodeNeedsNoKey(t *testing.T) {
     var stderr bytes.Buffer
     run([]string{"-via", "opencode", "-serve", "127.0.0.1:-1"}, nil, io.Discard, &stderr, env(nil))
-    if strings.Contains(stderr.String(), "is not set") || !strings.Contains(stderr.String(), "(backends: typesafe via opencode (default))") {
+    if strings.Contains(stderr.String(), "is not set") || !strings.Contains(stderr.String(), `"backends":"typesafe via opencode (default)"`) {
         t.Errorf("stderr:\n%s", stderr.String())
     }
 
@@ -93,7 +93,7 @@ func TestRunViaOpenCodeNeedsNoKey(t *testing.T) {
     defer srv.Close()
     stderr.Reset()
     run([]string{"-backend", "subq", "-endpoint", srv.URL, "-via", "opencode", "-serve", "127.0.0.1:-1"}, nil, io.Discard, &stderr, env(nil))
-    if !strings.Contains(stderr.String(), "(backends: typesafe via opencode, subq (default))") {
+    if !strings.Contains(stderr.String(), `"backends":"typesafe via opencode, subq (default)"`) {
         t.Errorf("the switch must offer typesafe via opencode without a key:\n%s", stderr.String())
     }
 }

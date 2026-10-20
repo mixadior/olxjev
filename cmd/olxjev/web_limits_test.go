@@ -18,8 +18,8 @@ import (
 // failingBreadcrumbs is OLX's breadcrumbs API failing.
 type failingBreadcrumbs struct{}
 
-func (failingBreadcrumbs) Q(_ context.Context, _ string, _ ...string) (interface{}, string, []error) {
-    return nil, "", []error{errors.New("olx is down")}
+func (failingBreadcrumbs) Get(_ context.Context, _ string) ([]byte, error) {
+    return nil, errors.New("olx is down")
 }
 
 // The API's status says whether the query was answered: a decision or OLX

@@ -100,13 +100,14 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(s
     threshold := fs.Float64("threshold", 0, "minimum model probability to accept an answer, for every question type (default: the backend's calibrated per-type thresholds)")
     asJSON := fs.Bool("json", false, "print results as JSON lines")
     noURL := fs.Bool("no-url", false, "do not call OLX to build the search URL")
-    debug := fs.Bool("debug", false, "print the decision state, questions and raw answers to stderr")
+    debug := fs.Bool("debug", false, "log the decision state, questions and raw answers (debug level)")
     backendName := fs.String("backend", typesafe.Name, "decision backend: typesafe (Jev) or subq (SubQ Snap)")
     endpoint := fs.String("endpoint", "", "decision API endpoint (default: the backend's)")
     model := fs.String("model", "", "model ID (default: the backend's)")
     via := fs.String("via", "typesafe", "where the typesafe backend's Jev is served: typesafe (TypeSafe's API, TYPESAFE_API_KEY) or opencode (OpenCode Zen, jev-1.13-free by default, OPENCODE_API_KEY optional)")
     serve := fs.String("serve", "", "serve the web UI on this address instead, e.g. 127.0.0.1:8080")
     cacheSize := fs.Int("cache-size", 100000, "with -serve: how many answered queries to keep in the in-memory LRU cache (0 disables it; 2000 by default with -web-debug)")
+    logFormat := fs.String("log-format", "auto", "log format on stderr: auto (console on a terminal, JSON lines otherwise), console or json")
     webDebug := fs.Bool("web-debug", false, "with -serve: show every filter of the result's category and of the low-confidence ones, with the model's questions, raw requests and answers (exposes the prompts: not for a public server)")
     if err := fs.Parse(args); err != nil {
         return 2
@@ -126,19 +127,24 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(s
         fmt.Fprintf(stderr, "olxjev: %s is not set\n", b.keyEnv)
         return 2
     }
+    logger, err := newLogger(stderr, *logFormat, *debug)
+    if err != nil {
+        fmt.Fprintln(stderr, "olxjev:", err)
+        return 2
+    }
 
     resolver, err := newResolver(backendOptions{name: *backendName, via: *via, apiKey: apiKey, endpoint: *endpoint, model: *model}, *threshold)
     if err != nil {
-        fmt.Fprintln(stderr, "olxjev:", err)
+        logger.Error().Err(err).Msg("building the resolver")
         return 1
     }
+    resolver.Log = &logger
     if *debug {
         resolver.Trace = func(stage string, state any, questions map[string]decision.Question, d *decision.Decision) {
-            dump, _ := json.MarshalIndent(map[string]any{"stage": stage, "state": state, "questions": questions}, "", "  ")
-            fmt.Fprintln(stderr, string(dump))
+            logger.Debug().Str("stage", stage).Interface("state", state).Interface("questions", questions).Msg("decision questions")
             if d != nil {
                 for _, raw := range d.Raw {
-                    fmt.Fprintln(stderr, string(raw))
+                    logger.Debug().Str("stage", stage).RawJSON("answer", raw).Msg("decision answer")
                 }
             }
         }
@@ -152,16 +158,22 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(s
     if *serve != "" {
         resolvers, err := webResolvers(resolver, *via, *threshold, getenv)
         if err != nil {
-            fmt.Fprintln(stderr, "olxjev:", err)
+            logger.Error().Err(err).Msg("building the resolvers")
             return 1
         }
         cacheSizeSet := false
         fs.Visit(func(f *flag.Flag) { cacheSizeSet = cacheSizeSet || f.Name == "cache-size" })
         if *webDebug && !cacheSizeSet {
             *cacheSize = debugCacheSize
-            fmt.Fprintf(stderr, "olxjev: -web-debug caches each answer's model exchanges (~30 KB): cache limited to %d entries (-cache-size to change)\n", debugCacheSize)
+            logger.Warn().Int("cache_size", debugCacheSize).Msgf("-web-debug caches each answer's model exchanges (~30 KB): cache limited to %d entries (-cache-size to change)", debugCacheSize)
         }
-        return serveWeb(*serve, resolvers, rq, webOptions{cacheSize: *cacheSize, debug: *webDebug, backend: *backendName, via: *via}, stdout, stderr)
+        secret, err := tokenSecret(getenv(secretEnv), logger)
+        if err != nil {
+            logger.Error().Err(err).Msg("page token secret")
+            return 1
+        }
+        opts := webOptions{cacheSize: *cacheSize, debug: *webDebug, backend: *backendName, via: *via, secret: secret}
+        return serveWeb(*serve, resolvers, rq, opts, logger)
     }
 
     queries := []string{*query}
@@ -239,6 +251,7 @@ func webResolvers(def *olxjev.Resolver, via string, threshold float64, getenv fu
             return nil, err
         }
         r.Trace = def.Trace
+        r.Log = def.Log
         out = append(out, r)
     }
     return out, nil

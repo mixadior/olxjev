@@ -33,10 +33,9 @@ func Build(ctx context.Context, params map[string]string, rq request.Request) (s
     cityId := params["city"]
     finalCategoryId := strings.TrimPrefix(categoryV, "category_")
 
-    _, b, errs := rq.Q(ctx, fmt.Sprintf("https://www.olx.ua/api/v1/offers/metadata/breadcrumbs/?category_id=%s&region_id=%s&city_id=%s", finalCategoryId, regionId, cityId))
-
-    if len(errs) > 0 {
-        return "", errs[0]
+    b, err := rq.Get(ctx, fmt.Sprintf("https://www.olx.ua/api/v1/offers/metadata/breadcrumbs/?category_id=%s&region_id=%s&city_id=%s", finalCategoryId, regionId, cityId))
+    if err != nil {
+        return "", err
     }
 
     var seoUrl struct {
@@ -47,9 +46,11 @@ func Build(ctx context.Context, params map[string]string, rq request.Request) (s
         }
     }
 
-    err := json.Unmarshal([]byte(b), &seoUrl)
-    if err != nil {
+    if err := json.Unmarshal(b, &seoUrl); err != nil {
         return "", err
+    }
+    if len(seoUrl.Data.Breadcrumbs) == 0 {
+        return "", fmt.Errorf("OLX returned no breadcrumbs for category %s", finalCategoryId)
     }
     seoUrlLast := seoUrl.Data.Breadcrumbs[len(seoUrl.Data.Breadcrumbs)-1]
 

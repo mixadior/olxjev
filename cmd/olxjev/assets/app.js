@@ -14,6 +14,8 @@
     var cache = {}; // backend + query -> result fragment, for back/forward
     var inflight = null;
     var radios = document.querySelectorAll('input[name="backend"]'); // none with a single backend
+    var tokenMeta = document.querySelector('meta[name="olxjev-token"]');
+    var token = tokenMeta ? tokenMeta.content : ""; // opens /result to this page's script
 
     // the switch's backend; "" without a switch (the server's default answers)
     function backend() {
@@ -73,8 +75,16 @@
             history.pushState({ q: q, backend: b }, "", "/?" + params(q));
         }
         document.title = q + " · OlxJev";
-        fetch("/result?" + params(q), { signal: ctrl.signal })
-            .then(function (r) { return r.text(); })
+        fetch("/result?" + params(q), { signal: ctrl.signal, headers: token ? { "X-OlxJev-Token": token } : {} })
+            .then(function (r) {
+                if (r.status === 403) {
+                    // the page's token expired or the server restarted: load the
+                    // result as a page, which brings a fresh token
+                    location.assign("/?" + params(q));
+                    return new Promise(function () {});
+                }
+                return r.text();
+            })
             .then(function (html) {
                 cache[key(q, b)] = html;
                 show(html);

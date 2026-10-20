@@ -1,11 +1,12 @@
 package main
 
 import (
-    "io"
     "net/http"
     "net/url"
     "strings"
     "testing"
+
+    "github.com/rs/zerolog"
 
     "github.com/mixadior/olxjev"
     "github.com/mixadior/olxjev/decision/typesafe"
@@ -20,7 +21,7 @@ func newDebugWeb(t *testing.T, debug bool) http.Handler {
     if err != nil {
         t.Fatalf("newResolver: %v", err)
     }
-    h, err := newWeb([]*olxjev.Resolver{resolver}, fakeBreadcrumbs{}, io.Discard, webOptions{cacheSize: 10, debug: debug})
+    h, err := newWeb([]*olxjev.Resolver{resolver}, fakeBreadcrumbs{}, zerolog.Nop(), webOptions{cacheSize: 10, debug: debug})
     if err != nil {
         t.Fatalf("newWeb: %v", err)
     }

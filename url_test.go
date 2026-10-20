@@ -10,8 +10,8 @@ import (
 // fakeBreadcrumbs answers olxurl.Build's breadcrumbs request without network.
 type fakeBreadcrumbs struct{}
 
-func (fakeBreadcrumbs) Q(_ context.Context, _ string, _ ...string) (interface{}, string, []error) {
-    return nil, `{"data":{"breadcrumbs":[{"href":"/uk/nedvizhimost/kvartiry/prodazha-kvartir/odessa/"}]}}`, nil
+func (fakeBreadcrumbs) Get(_ context.Context, _ string) ([]byte, error) {
+    return []byte(`{"data":{"breadcrumbs":[{"href":"/uk/nedvizhimost/kvartiry/prodazha-kvartir/odessa/"}]}}`), nil
 }
 
 func TestSearchURLAddsCurrency(t *testing.T) {

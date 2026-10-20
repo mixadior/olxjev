@@ -80,9 +80,9 @@ type recordingBreadcrumbs struct {
     urls []string
 }
 
-func (r *recordingBreadcrumbs) Q(_ context.Context, requestURL string, _ ...string) (interface{}, string, []error) {
+func (r *recordingBreadcrumbs) Get(_ context.Context, requestURL string) ([]byte, error) {
     r.urls = append(r.urls, requestURL)
-    return nil, `{"data":{"breadcrumbs":[{"href":"/uk/nedvizhimost/posutochno-pochasovo/"}]}}`, nil
+    return []byte(`{"data":{"breadcrumbs":[{"href":"/uk/nedvizhimost/posutochno-pochasovo/"}]}}`), nil
 }
 
 func TestSearchURLsPrimaryThenAlternatives(t *testing.T) {
