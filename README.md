@@ -14,6 +14,19 @@ https://www.olx.ua/uk/nedvizhimost/kvartiry/dolgosrochnaya-arenda-kvartir/kharko
 > affiliated with OLX, TypeSafe or SubQ, it has no SLA, and OLX can change its category tree or URLs
 > at any time.
 
+## Live demo
+
+**[olxjev.ggg.org.ua](https://olxjev.ggg.org.ua)**: type a request in Ukrainian or Russian and get the OLX
+search link.
+
+> [!NOTE]
+> The demo runs Jev through [OpenCode Zen's free tier](https://opencode.ai/docs/zen) (`-via opencode`,
+> `jev-1.13-free`). The free tier is rate-limited, and the limits aren't published. When many people use the
+> demo at once, a query can fail with `429 FreeUsageLimitError`; wait a little and try again. Answers that
+> were already resolved come from the cache and don't count against the limit. For steady use, run your own
+> copy with a paid key (see [Usage](#usage)). OpenCode doesn't state a data policy for the free model, so
+> don't type anything private.
+
 ## How it works
 
 OLX's real-estate search is a wizard: pick a category, a city, then the filters that category has. olxjev
