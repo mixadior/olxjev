@@ -51,7 +51,7 @@ Spec: `docs/superpowers/specs/2026-10-14-olxjev-design.md`; backends: `docs/supe
   wanted fields' gates 0.85–0.99, untouched ones ≤0.13; ~9% of gates pass, stage 2+3 fell from ~8.7k to ~4.5k
   tokens per query. The gate needs the option list: with the title alone wanted fields scored 0.35–0.44.
   100-case corpus (×2): 42 of 43 wanted gates ≥0.85, the exception «свердловиною» at 0.32–0.35 (OLX's option
-  label is Russian, «Скважина»); 4–5 of 30 must-stay-unset gates passed, which costs stage-3 tokens only, except
+  label «Скважина» shares no word with it); 4–5 of 30 must-stay-unset gates passed, which costs stage-3 tokens only, except
   «газ підведений» → heating individual_gas (gate 0.78, option 0.52).
   `-threshold` leaves the gate cutoff alone (it picks questions, it accepts nothing).
 - `Result.Values` has the bfc `State.Values` shape. The CLI builds the URL with `olxjev.SearchURL`, which wraps

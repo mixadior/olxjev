@@ -20,7 +20,7 @@ type CityCandidate struct {
     HasDistricts bool
 }
 
-// Gazetteer shortlists cities mentioned in free text (Ukrainian or Russian,
+// Gazetteer shortlists cities mentioned in free text (any spelling variant,
 // any grammatical case) so Jev only chooses among a handful of candidates.
 type Gazetteer struct {
     cities  []gazCity
@@ -52,7 +52,7 @@ type scoredCity struct {
     distance int
 }
 
-// foldReplacer maps Ukrainian and Russian spellings onto one alphabet so
+// foldReplacer maps spelling variants onto one alphabet so
 // «Харкові» and «Харькове» both fold to «харков…».
 var foldReplacer = strings.NewReplacer(
     "ё", "е", "і", "и", "ї", "и", "ы", "и", "є", "е", "э", "е", "ґ", "г",

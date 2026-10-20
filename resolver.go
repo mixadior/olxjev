@@ -114,7 +114,7 @@ type Resolver struct {
 // 0.85–0.99, weak hints at 0.2–0.5 and untouched fields at 0.06–0.10; a
 // wrong yes costs only stage-3 tokens, so Gate is a loose 0.3. On the
 // 100-case corpus 42 of 43 wanted gates were ≥0.85; «свердловиною» scored
-// 0.32–0.35 against the Russian option label «Скважина».
+// 0.32–0.35 against OLX's option label «Скважина», which shares no word with it.
 var DefaultThresholds = Thresholds{Category: 0.5, Place: 0.5, Presence: 0.5, Choice: 0.5, Number: 0.8, Multi: 0.4, Gate: 0.3}
 
 // CalibratedThresholds are the thresholds per decision backend (Decider

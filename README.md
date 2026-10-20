@@ -9,14 +9,14 @@ https://www.olx.ua/uk/nedvizhimost/kvartiry/dolgosrochnaya-arenda-kvartir/kharko
 ```
 
 > **This is a study project.** I wrote it to learn how far small "decision" models (typed judgments
-> with probabilities, instead of free-form LLM text) can go on a real, messy task: Ukrainian and
-> Russian queries, misspellings, near-duplicate place names, 42 categories and their filters. It is not
+> with probabilities, instead of free-form LLM text) can go on a real, messy task: everyday
+> phrasing, spelling variants, misspellings, near-duplicate place names, 42 categories and their filters. It is not
 > affiliated with OLX, TypeSafe or SubQ, it has no SLA, and OLX can change its category tree or URLs
 > at any time.
 
 ## Live demo
 
-**[olxjev.ggg.org.ua](https://olxjev.ggg.org.ua)**: type a request in Ukrainian or Russian and get the OLX
+**[olxjev.ggg.org.ua](https://olxjev.ggg.org.ua)**: type a request in Ukrainian and get the OLX
 search link.
 
 > [!NOTE]
